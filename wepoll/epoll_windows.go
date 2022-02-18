@@ -7,6 +7,7 @@ package wepoll
 import "C"
 import (
 	"errors"
+	"fmt"
 	"reflect"
 
 	"net"
@@ -64,7 +65,7 @@ func (e *Epoll) Close() error {
 	}
 }
 
-func (e *Epoll) Add(conn net.Conn) error {
+func (e *Epoll) Add(conn net.Conn) (int, error) {
 	// Extract file descriptor associated with the connection
 	fd := C.SOCKET(socketFDAsUint(conn))
 	var ev C.epoll_event
@@ -76,7 +77,7 @@ func (e *Epoll) Add(conn net.Conn) error {
 		return errors.New("C.EPOLL_CTL_ADD error ")
 	}
 	e.connections[int(fd)] = conn
-	return nil
+	return int(fd), nil
 }
 
 func (e *Epoll) Remove(conn net.Conn) error {
@@ -159,4 +160,21 @@ func socketFDAsUint(conn net.Conn) uint64 {
 	pfdVal := reflect.Indirect(fdVal).FieldByName("pfd")
 
 	return pfdVal.FieldByName("Sysfd").Uint()
+}
+
+func (e *Epoll) GetConnectionByFD(fd int) (net.Conn, error) {
+	val, ok := e.connections[fd]
+	if !ok {
+		return nil, fmt.Errorf("file descriptor does not exist")
+	}
+	return val, nil
+}
+
+func (e *Epoll) GetFDByConnection(conn net.Conn) (int, error) {
+	for key, value := range e.connections {
+		if conn == value {
+			return key, nil
+		}
+	}
+	return 0, fmt.Errorf("conn does not exist")
 }

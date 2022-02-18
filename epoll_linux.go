@@ -54,9 +54,9 @@ func (e *epoll) Close() error {
 	return unix.Close(e.fd)
 }
 
-func (e *epoll) Add(conn net.Conn) error {
+func (e *epoll) Add(conn net.Conn) (int, error) {
 	// Extract file descriptor associated with the connection
-	fd := socketFD(conn)
+	fd := SocketFD(conn)
 
 	e.lock.Lock()
 	defer e.lock.Unlock()
@@ -66,11 +66,11 @@ func (e *epoll) Add(conn net.Conn) error {
 		return err
 	}
 	e.connections[fd] = conn
-	return nil
+	return fd, nil
 }
 
 func (e *epoll) Remove(conn net.Conn) error {
-	fd := socketFD(conn)
+	fd := SocketFD(conn)
 	err := unix.EpollCtl(e.fd, syscall.EPOLL_CTL_DEL, fd, nil)
 	if err != nil {
 		return err
@@ -149,4 +149,22 @@ func (e *epoll) WaitChan(count int) <-chan []net.Conn {
 		}
 	}()
 	return ch
+}
+
+
+func (e *epoll) GetConnectionByFD(fd int) (net.Conn, error) {
+	val, ok := e.connections[fd]
+	if !ok {
+		return nil, fmt.Errorf("file descriptor does not exist")
+	}
+	return val, nil
+}
+
+func (e *epoll) GetFDByConnection(conn net.Conn) (int, error) {
+	for key, value := range e.connections {
+    if conn == value { 
+      return key, nil
+    }
+  }
+	return 0, fmt.Errorf("conn does not exist")
 }

@@ -1,4 +1,4 @@
-module github.com/smallnest/epoller
+module github.com/gradientzero/epoller
 
 go 1.12
 

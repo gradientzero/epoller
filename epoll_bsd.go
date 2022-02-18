@@ -3,6 +3,7 @@
 package epoller
 
 import (
+	"fmt"
 	"net"
 	"sync"
 	"syscall"
@@ -75,8 +76,8 @@ func (e *epoll) Close() error {
 	return syscall.Close(e.fd)
 }
 
-func (e *epoll) Add(conn net.Conn) error {
-	fd := socketFD(conn)
+func (e *epoll) Add(conn net.Conn) (int, error) {
+	fd := SocketFD(conn)
 
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -88,11 +89,11 @@ func (e *epoll) Add(conn net.Conn) error {
 	)
 
 	e.connections[fd] = conn
-	return nil
+	return fd, nil
 }
 
 func (e *epoll) Remove(conn net.Conn) error {
-	fd := socketFD(conn)
+	fd := SocketFD(conn)
 
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -189,4 +190,21 @@ func (e *epoll) WaitChan(count int) <-chan []net.Conn {
 		}
 	}()
 	return ch
+}
+
+func (e *epoll) GetConnectionByFD(fd int) (net.Conn, error) {
+	val, ok := e.connections[fd]
+	if !ok {
+		return nil, fmt.Errorf("file descriptor does not exist")
+	}
+	return val, nil
+}
+
+func (e *epoll) GetFDByConnection(conn net.Conn) (int, error) {
+	for key, value := range e.connections {
+    if conn == value { 
+      return key, nil
+    }
+  }
+	return 0, fmt.Errorf("conn does not exist")
 }
