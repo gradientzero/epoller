@@ -4,6 +4,7 @@ package epoller
 
 import (
 	"net"
+	"fmt"
 	"sync"
 	"syscall"
 
@@ -63,7 +64,7 @@ func (e *epoll) Add(conn net.Conn) (int, error) {
 
 	err := unix.EpollCtl(e.fd, syscall.EPOLL_CTL_ADD, fd, &unix.EpollEvent{Events: unix.POLLIN | unix.POLLHUP, Fd: int32(fd)})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	e.connections[fd] = conn
 	return fd, nil
@@ -151,7 +152,6 @@ func (e *epoll) WaitChan(count int) <-chan []net.Conn {
 	return ch
 }
 
-
 func (e *epoll) GetConnectionByFD(fd int) (net.Conn, error) {
 	val, ok := e.connections[fd]
 	if !ok {
@@ -162,9 +162,9 @@ func (e *epoll) GetConnectionByFD(fd int) (net.Conn, error) {
 
 func (e *epoll) GetFDByConnection(conn net.Conn) (int, error) {
 	for key, value := range e.connections {
-    if conn == value { 
-      return key, nil
-    }
-  }
+		if conn == value {
+			return key, nil
+		}
+	}
 	return 0, fmt.Errorf("conn does not exist")
 }
